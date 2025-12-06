@@ -277,9 +277,11 @@ function dashboardData() {
             const profile = await getProfile();
 
             if (profile && profile.success) {
+                console.log("Recuperation profile Fonctionnel")
                 this.user = profile.data; // stocker les données de l'utilisateur
                 this.isAuthenticated = true;
                 localStorage.setItem('user', JSON.stringify(profile.data));
+                console.log("Profile utilisateur recuperer et ajouter a localStorage",profile.data)
             } else {
                 //  Si l'authentification échoue(token manquant , 401, etc.)
                 this.isAuthenticated = false;

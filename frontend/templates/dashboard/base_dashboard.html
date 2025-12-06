@@ -728,6 +728,7 @@
             // Charger le profil utilisateur
             const profileData = await getProfile();
             console.log('Profile data:', profileData);
+            localStorage.setItem('user', JSON.stringify(profile.data));
             
             if (profileData.success && profileData.user) {
                 const user = profileData.user;
@@ -773,6 +774,14 @@
                 redirectSiNonAuthentifie();
             }
         });
+        window.handleGlobalLogout = async function() {
+        // Appeler la fonction logout du composant Alpine,
+        // ou si on est en dehors de la portée, appeler directement deconnexion()
+        
+        // Puisque nous ne sommes pas sûrs de la portée, l'appel direct est le plus sûr :
+        await deconnexion(); 
+        window.location.href = '/login/'; 
+    };
     </script>
     
 </body>

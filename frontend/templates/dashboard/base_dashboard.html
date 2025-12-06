@@ -679,6 +679,9 @@
     <!-- Skeleton Loaders -->
     {% include "dashboard/components/skeleton.html" %}
     
+    <!-- Utilities (must be loaded first) -->
+    <script src="{% static 'js/utils.js' %}"></script>
+    
     <!-- PWA Install -->
     <script src="{% static 'js/pwa-install.js' %}"></script>
     
@@ -728,7 +731,9 @@
             // Charger le profil utilisateur
             const profileData = await getProfile();
             console.log('Profile data:', profileData);
-            localStorage.setItem('user', JSON.stringify(profile.data));
+            if (profileData && profileData.user) {
+                localStorage.setItem('user', JSON.stringify(profileData.user));
+            }
             
             if (profileData.success && profileData.user) {
                 const user = profileData.user;

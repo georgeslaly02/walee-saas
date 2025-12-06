@@ -352,22 +352,24 @@ class OrganisationAPIView(APIView):
     TABLE_NAME = "organisations"
     def get(self, request):
         """Récupère la liste des organisations."""
-        data, status_code = proxy_to_supabase('GET', request)
+        data, status_code = proxy_to_supabase('GET', self.TABLE_NAME, request)
         return Response(data, status=status_code)
 
     def post(self, request):
         """Crée une nouvelle organisation."""
-        serializer = OrganisationsSerializer(data=request.data)
         print("Données reçues:", request.data)
         
-        if serializer.is_valid():
-            # Utilise le proxy corrigé
+        try:
+            # Utilise le proxy directement sans validation stricte
+            # (Supabase gère la validation côté serveur)
             data, status_code = proxy_to_supabase(
                 'POST', 
                 self.TABLE_NAME, 
                 request, 
-                data=serializer.validated_data
+                data=request.data
             )
+            
+            print(f"Réponse Supabase - Status: {status_code}, Data: {data}")
             
             if status_code in [200, 201]:
                 return Response({
@@ -376,17 +378,22 @@ class OrganisationAPIView(APIView):
                     "data": data
                 }, status=status_code)
             else:
+                # Retourner l'erreur de Supabase
+                error_msg = data.get('message') if isinstance(data, dict) else str(data)
                 return Response({
                     "success": False,
                     "message": "Erreur Supabase",
-                    "errors": data
+                    "errors": error_msg
                 }, status=status_code)
-        
-        return Response({
-            "success": False,
-            "message": "Données invalides",
-            "errors": serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"Erreur lors de la création: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response({
+                "success": False,
+                "message": "Erreur lors de la création de l'organisation",
+                "errors": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
     # --- DÉTAIL (GET, PATCH, DELETE) ---

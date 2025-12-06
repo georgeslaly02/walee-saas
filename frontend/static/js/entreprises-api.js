@@ -39,12 +39,12 @@ async function listEntreprises() {
 }
 /* Crée une nouvelle entreprise */
 
-async function createEntreprise(data) {
-    console.log('Données envoyées pour création:', data);
+async function createEntreprise(dataToSend) {
+    console.log('Données envoyées pour création:', dataToSend);
     try {
         const token = localStorage.getItem('access_token');
         console.log("TOKEN JSON depuis localStorage:", token);
-        if (data.autre_type_organisation == true) {
+        if (dataToSend.autre_type_organisation == true) {
             // Creer le nouveau type organisation et recuperer son id
         }
 
@@ -61,24 +61,24 @@ async function createEntreprise(data) {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(dataToSend)
         });
-        const data = await response.json();
-        console.log("Donnees recu de response :",data);
+        const responseData = await response.json();
+        console.log("Donnees recu de response :", responseData);
         if (!response.ok) {
-            console.log("ERREUR requete :",data);
+            console.log("ERREUR requete :", responseData);
             
             return {
                 'success': false,
-                "message": data.message || `Erreur HTTP: ${response.status}`
+                "message": responseData.message || `Erreur HTTP: ${response.status}`
             };
         }
-        return data;
+        return responseData;
     } catch (error) {
-        console.log("ERREUR serveur :",error);
+        console.log("ERREUR serveur :", error);
         return {
             'success': false,
-            "message": error || 'Erreur lors de la création de l\'entreprise'
+            "message": error.message || 'Erreur lors de la création de l\'entreprise'
         };
     }
 }

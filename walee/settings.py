@@ -123,6 +123,11 @@ if DATABASE_URL:
             conn_health_checks=True,
         )
     }
+    # Ajouter SSL pour Supabase
+    if 'supabase' in DATABASE_URL:
+        DATABASES['default']['OPTIONS'] = {
+            'sslmode': 'require',
+        }
 else:
     # Development: SQLite
     DATABASES = {

@@ -866,15 +866,16 @@
           console.log("User JSON depuis localStorage:", userJson);
 
           let userData = null;
-          if (userJson) {
+          if (userJson && userJson !== "undefined") {
             try {
               userData = JSON.parse(userJson);
               console.log("User data parsé:", userData);
             } catch (parseError) {
               console.error("Erreur parsing user JSON:", parseError);
+              userData = null;
             }
           }
-          const proprietaireId = userData ? userData.id : null;
+          const proprietaireId = userData && userData.id ? userData.id : null;
           console.log('Proprietaire ID:', proprietaireId);
           if (!proprietaireId) {
             showToast(
@@ -892,17 +893,14 @@
               this.formData.type_organisation === "autre"
                 ? this.formData.autreActivite
                 : this.formData.type_organisation,
-            autre_type_organisation:
-              this.formData.type_organisation === "autre" ? true : false,
             ville: this.formData.ville,
             pays: this.formData.pays,
             devise: this.formData.devise,
-            email_contact: this.formData.email_contact,
-            telephone_principal: this.formData.telephone_principal,
-            numero_registre: this.formData.numero_registre,
-            site_web: this.formData.site_web,
-            description: this.formData.description,
-            proprietaire_id: proprietaireId,
+            email_contact: this.formData.email_contact || "",
+            telephone_principal: this.formData.telephone_principal || "",
+            numero_registre: this.formData.numero_registre || "",
+            site_web: this.formData.site_web || "",
+            proprietaire: proprietaireId,
             actif: true,
           };
           console.log("Donnees a envoyer :", dataToSend);

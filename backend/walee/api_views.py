@@ -349,7 +349,7 @@ class OrganisationAPIView(APIView):
     """
 
     # --- LISTE (GET) et CRÉATION (POST) ---
-
+    TABLE_NAME = "organisations"
     def get(self, request):
         """Récupère la liste des organisations."""
         data, status_code = proxy_to_supabase('GET', request)
@@ -358,19 +358,35 @@ class OrganisationAPIView(APIView):
     def post(self, request):
         """Crée une nouvelle organisation."""
         serializer = OrganisationsSerializer(data=request.data)
-        print("Données reçues pour création d'organisation:", request.data)
+        print("Données reçues:", request.data)
+        
         if serializer.is_valid():
-            # Le serializer valide les données, le proxy les envoie
-            data, status_code = proxy_to_supabase('POST', request, data=serializer.validated_data)
-            return Response({
-                "success": True,
-                "message": "Organisation créée avec succès.",
-                "data": data
-            }, status=status_code)
+            # Utilise le proxy corrigé
+            data, status_code = proxy_to_supabase(
+                'POST', 
+                self.TABLE_NAME, 
+                request, 
+                data=serializer.validated_data
+            )
+            
+            if status_code in [200, 201]:
+                return Response({
+                    "success": True,
+                    "message": "Organisation créée avec succès.",
+                    "data": data
+                }, status=status_code)
+            else:
+                return Response({
+                    "success": False,
+                    "message": "Erreur Supabase",
+                    "errors": data
+                }, status=status_code)
         
         return Response({
-            "sucess": False,
-            "message":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            "success": False,
+            "message": "Données invalides",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
     # --- DÉTAIL (GET, PATCH, DELETE) ---
@@ -381,16 +397,68 @@ class OrganisationAPIView(APIView):
         """Met à jour partiellement une organisation (requiert l'ID dans l'URL)."""
         serializer = OrganisationsSerializer(data=request.data, partial=True) 
         if serializer.is_valid():
-            data, status_code = proxy_to_supabase('PATCH', request, pk=pk, data=serializer.validated_data)
+            data, status_code = proxy_to_supabase('PATCH', self.TABLE_NAME, request, pk=pk, data=serializer.validated_data)
             return Response(data, status=status_code)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         """Supprime une organisation (requiert l'ID dans l'URL)."""
-        data, status_code = proxy_to_supabase('DELETE', request, pk=pk)
+        data, status_code = proxy_to_supabase('DELETE', self.TABLE_NAME, request, pk=pk)
         
         if status.is_success(status_code) or status_code == status.HTTP_204_NO_CONTENT:
             return Response(status=status.HTTP_204_NO_CONTENT)
             
         return Response(data, status=status_code)
+    
+class TypeOrganisationsAPIView(APIView):
+    # Nom de la table dans Supabase/PostgREST
+    TABLE_NAME = "type_organisations" 
+    # permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Récupère la liste des types d'organisations."""
+        data, status_code = proxy_to_supabase(
+            'GET', 
+            self.TABLE_NAME, 
+            request,
+            order_by='description.asc'  # Exemple de tri par description croissant
+        )
+        
+        # Si vous voulez utiliser le serializer pour formater la réponse
+        if status_code == 200:
+            serializer = TypeOrganisationsSerializer(data=data, many=True)
+            if serializer.is_valid() or isinstance(data, list):
+                return Response(data, status=status_code)
+        
+        return Response(data, status=status_code)
+
+    def post(self, request):
+        """Crée un nouveau type d'organisation."""
+        serializer = TypeOrganisationsSerializer(data=request.data)
+        if serializer.is_valid():
+            data, status_code = proxy_to_supabase('POST', self.TABLE_NAME, request, data=serializer.validated_data)
+            return Response(data, status=status_code)
+        
+        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    # --- DÉTAIL (PATCH) et SUPPRESSION (DELETE) ---
+    def patch(self, request, pk):
+        """Met à jour partiellement un type d'organisation."""
+        serializer = TypeOrganisationsSerializer(data=request.data, partial=True) 
+        if serializer.is_valid():
+            # Utilise l'ID (pk) pour cibler l'enregistrement
+            data, status_code = proxy_to_supabase('PATCH', self.TABLE_NAME, request, pk=pk, data=serializer.validated_data)
+            return Response(data, status=status_code)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        """Supprime un type d'organisation."""
+        data, status_code = proxy_to_supabase('DELETE', self.TABLE_NAME, request, pk=pk)
+        
+        if status.is_success(status_code) or status_code == status.HTTP_204_NO_CONTENT:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        return Response(data, status=status_code)
+

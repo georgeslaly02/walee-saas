@@ -100,8 +100,8 @@ urlpatterns = [
     # 2. Route DETAIL/UPDATE/DELETE: AVEC ID. Appelle les méthodes patch() et delete()
     # L'ID est passé comme argument 'pk' à la vue
     path('api/organisations/<uuid:pk>/', api_views.OrganisationAPIView.as_view(), name='organisation-detail'),
+    path('api/type-organisations/', api_views.TypeOrganisationsAPIView.as_view(), name='type-organisations'),
 ]
-
 # Serve static and media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -286,16 +286,45 @@ class OrganisationsSerializer(serializers.ModelSerializer):
     pays_nom = serializers.CharField(source='pays.nom', read_only=True)
     plan_nom = serializers.CharField(source='plan.nom', read_only=True)
     type_organisation_nom = serializers.CharField(source='type_organisation.nom', read_only=True)
-
+    # Champs calculés pour le frontend
+    initiales = serializers.SerializerMethodField(read_only=True)
+    
     class Meta:
         model = Organisations
-        fields = '__all__'
-        read_only_fields = [
-            'date_debut_abonnement', 'date_fin_abonnement', 'date_fin_essai',
+        fields = [
+            'id', 'proprietaire', 'nom_commercial', 'raison_sociale', 'acronyme', 'sigle',
+            'numero_identification', 'numero_tva', 'code_naf', 'forme_juridique',
+            'adresse_ligne1', 'adresse_ligne2', 'ville', 'code_postal', 'region', 'pays',
+            'email_contact', 'telephone_principal', 'telephone_secondaire', 'site_web',
+            'devise', 'fuseau_horaire', 'langue_defaut', 'plan', 'statut_abonnement',
+            'date_debut_abonnement', 'date_fin_abonnement', 'date_fin_essai', 'logo_url',
+            'couleur_principale', 'couleur_secondaire', 'marketplace_actif', 'marketplace_slug',
+            'marketplace_description', 'marketplace_banniere_url', 'parametres_facturation',
+            'parametres_caisse', 'parametres_stock', 'parametres_comptabilite', 'actif',
             'verifie', 'date_verification', 'date_creation', 'date_modification',
-            'date_suppression'
+            'date_suppression', 'type_organisation', 'initiales'
         ]
+        read_only_fields = [
+            'id', 'date_creation', 'date_modification', 'date_suppression',
+            'date_verification', 'initiales'
+        ]
+    
+    def get_initiales(self, obj):
+        """Génère les initiales depuis nom_commercial"""
+        if not obj.nom_commercial:
+            return '??'
+        mots = obj.nom_commercial.strip().split(' ')
+        if len(mots) == 1:
+            return mots[0][:2].upper()
+        return (mots[0][0] + mots[1][0]).upper()
 
+    def validate(self, data):
+        """Validation globale"""
+        if not data.get('nom_commercial'):
+            raise serializers.ValidationError({
+                "nom_commercial": "Le nom commercial est obligatoire"
+            })
+        return data
 
 class PaiementsSerializer(serializers.ModelSerializer):
     mode_paiement_nom = serializers.CharField(source='mode_paiement.nom', read_only=True)
@@ -473,8 +502,14 @@ class TypesNotificationsSerializer(serializers.ModelSerializer):
 
 class TypeOrganisationsSerializer(serializers.ModelSerializer):
     class Meta:
-        model = TypeOrganisations
+        model = TypeOrganisations  # Votre modèle généré par inspectdb
         fields = '__all__'
+        read_only_fields = ['id', 'created_at']  # Supabase gère ces champs
+
+    def validate_description(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("La description ne peut pas être vide")
+        return value
 
 class UnitesMesureSerializer(serializers.ModelSerializer):
     class Meta:

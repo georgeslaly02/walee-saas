@@ -9,51 +9,87 @@ SUPABASE_ANON_KEY = settings.SUPABASE_ANON_KEY
 # Importez vos variables d'environnement
 # from config import SUPABASE_URL, SUPABASE_ANON_KEY 
 
-def proxy_to_supabase(request_method, endpoint_path, request, data=None):
+# supabase_service.py
+def proxy_to_supabase(request_method, table_name, request, pk=None, data=None,order_by=None):
     """
-    Fonction générique pour transmettre une requête (GET, POST, etc.) à Supabase PostgREST.
+    Fonction générique pour proxy vers Supabase PostgREST
+    
+    Args:
+        request_method: 'GET', 'POST', 'PATCH', 'DELETE'
+        table_name: nom de la table Supabase ('organisations', 'type_organisations')
+        request: objet request Django
+        pk: ID pour les opérations sur un élément spécifique
+        data: données pour POST/PATCH
+        order_by: optionnel, pour trier les résultats (ex: 'name.asc' ou 'created_at.desc')
     """
-    # 1. Récupération du jeton (le jeton doit être vérifié par une couche d'Auth DRF, mais on le récupère ici)
+    # Récupération du token
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
-        # Normalement géré par DRF, mais ici pour la résilience
         return {'error': "Token Bearer invalide ou manquant."}, status.HTTP_401_UNAUTHORIZED
     
     access_token = auth_header.split(' ', 1)[1].strip()
     
-    # 2. Construction des Headers
+    # Construction des headers
     headers = {
         "apikey": SUPABASE_ANON_KEY,
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
     
-    # 3. Construction de l'URL
-    url = f"{SUPABASE_URL}/rest/v1/{endpoint_path}"
+    # Construction de l'URL
+    if pk:
+        url = f"{SUPABASE_URL}/rest/v1/{table_name}?id=eq.{pk}"
+    else:
+        url = f"{SUPABASE_URL}/rest/v1/{table_name}"
     
+    # Construction des paramètres de requête
+    params = {}
+
+    # Ajout de l'ordre si spécifié
+    if order_by:
+        # Supprimer .asc ou .desc si présent
+        clean_order_by = order_by.replace('.asc', '').replace('.desc', '')
+        # Déterminer la direction
+        direction = 'asc' if '.asc' in order_by or '.desc' not in order_by else 'desc'
+        params['order'] = f"{clean_order_by}.{direction}"
+    
+    # Ajouter les autres paramètres de la requête
+    for key, value in request.GET.items():
+        if key != 'order':  # Ne pas écraser le order qu'on a défini
+            params[key] = value
     try:
-        # 4. Exécution de la Requête
-        response = requests.request(
-            method=request_method, 
-            url=url, 
-            headers=headers, 
-            json=data, 
-            params=request.query_params # Permet de passer les filtres Supabase (?select=...)
-        )
-        response.raise_for_status() # Lève une exception si le statut est 4xx ou 5xx
+        # Exécution de la requête
+        if request_method in ['GET', 'DELETE']:
+            response = requests.request(
+                method=request_method, 
+                url=url, 
+                headers=headers, 
+                params=params
+            )
+        else:  # POST, PATCH
+            response = requests.request(
+                method=request_method, 
+                url=url, 
+                headers=headers, 
+                json=data,
+                params=params
+            )
         
-        return response.json(), status.HTTP_200_OK
+        response.raise_for_status()
+        
+        # Pour DELETE, souvent pas de contenu
+        if request_method == 'DELETE':
+            return {"success": True}, status.HTTP_204_NO_CONTENT
+            
+        # Pour les autres méthodes, retourner le JSON
+        return response.json(), response.status_code
 
     except requests.exceptions.HTTPError as e:
-        # 5. Gestion des erreurs (Renvoie le statut réel de Supabase)
         try:
             error_details = response.json()
-        except requests.exceptions.JSONDecodeError:
-            error_details = {"detail": "Erreur Supabase inconnue ou non-JSON: " + str(e)}
-
-        # Retourne le statut HTTP de l'erreur Supabase (ex: 401, 403, 404)
+        except:
+            error_details = {"detail": f"Erreur Supabase: {str(e)}"}
         return error_details, response.status_code
-
+        
     except Exception as e:
-        # Erreur interne (ex: problème de connexion réseau)
-        return {"detail": f"Erreur de proxy interne : {e}"}, status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"detail": f"Erreur de proxy: {str(e)}"}, status.HTTP_500_INTERNAL_SERVER_ERROR
